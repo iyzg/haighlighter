@@ -23,15 +23,17 @@ Quill.register(HighlightBlot);
 
 // Editor is an uncontrolled React component
 const Editor = forwardRef(
-    ({ readOnly, defaultValue, onTextChange, onSelectionChange }, ref) => {
+    ({ readOnly, defaultValue, onTextChange, onSelectionChange, onSubmit }, ref) => {
         const containerRef = useRef(null);
         const defaultValueRef = useRef(defaultValue);
         const onTextChangeRef = useRef(onTextChange);
         const onSelectionChangeRef = useRef(onSelectionChange);
+        const onSubmitRef = useRef(onSubmit);
 
         useLayoutEffect(() => {
             onTextChangeRef.current = onTextChange;
             onSelectionChangeRef.current = onSelectionChange;
+            onSubmitRef.current = onSubmit;
         });
 
         useEffect(() => {
@@ -44,6 +46,15 @@ const Editor = forwardRef(
                 container.ownerDocument.createElement('div'),
             );
 
+            // Create the Quill instance first
+            const quill = new Quill(editorContainer, {
+                theme: 'snow',
+                modules: { toolbar: false }
+            });
+
+            ref.current = quill;
+
+            // Now add the click event listener (quill is in scope)
             editorContainer.addEventListener('click', (e) => {
                 if (e.target.classList.contains('ql-highlight')) {
                     // Get the position of the clicked highlight
@@ -58,15 +69,21 @@ const Editor = forwardRef(
                         quill.formatText(leafIndex, leafLength, 'highlight', false);
                     }
                 }
-            })
-
-            const quill = new Quill(editorContainer, {
-                theme: 'snow',
-                modules: { toolbar: false }
             });
 
-            ref.current = quill;
 
+            editorContainer.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    console.log('Ctrl+Enter pressed via event listener!');
+                    const text = quill.getText();
+                    if (onSubmitRef.current) {
+                        onSubmitRef.current(text);
+                    } else {
+                        console.log('onSubmitRef.current is not available');
+                    }
+                }
+            });
 
             if (defaultValueRef.current) {
                 quill.setContents(defaultValueRef.current);
